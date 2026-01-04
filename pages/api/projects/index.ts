@@ -109,6 +109,7 @@ async function handleCreateProject(
     contractor,
     description,
     progress,
+    planned_progress,
   } = req.body;
 
   if (!name || !state_id || !type || !status || !start_date || budget === undefined || !contractor || !description || progress === undefined) {
@@ -129,6 +130,7 @@ async function handleCreateProject(
     contractor,
     description,
     progress: Number(progress),
+    planned_progress: planned_progress !== undefined ? Number(planned_progress) : 0,
   };
 
   // Create project (admin check is done in createProject function)

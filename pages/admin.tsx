@@ -10,7 +10,7 @@ import { states } from '@/data/states';
 import { ProjectStatus, ProjectType } from '@/data/projects';
 import { ProjectRow } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Plus, ArrowLeft, Save, Shield, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, ArrowLeft, Save, Shield, Trash2, Loader2, AlertCircle, Upload, Download, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useUser } from '@clerk/nextjs';
 
@@ -28,16 +28,25 @@ const AdminPage = () => {
     const [isLoadingProjects, setIsLoadingProjects] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [spreadsheetId, setSpreadsheetId] = useState('');
+    const [sheetName, setSheetName] = useState('Sheet1');
 
     // Form state
     const [formData, setFormData] = useState({
         name: '',
         description: '',
         stateId: '',
+        location: '',
+        branch: '',
         type: 'construction' as ProjectType,
         status: 'planning' as ProjectStatus,
         budget: '',
+        disbursed: '',
         contractor: '',
+        officer: '',
         startDate: '',
         endDate: '',
         progress: 0,
@@ -110,12 +119,16 @@ const AdminPage = () => {
                 body: JSON.stringify({
                     name: formData.name,
                     state_id: formData.stateId,
+                    location: formData.location || null,
+                    branch: formData.branch || null,
                     type: formData.type,
                     status: formData.status,
                     start_date: formData.startDate,
                     end_date: formData.endDate || null,
                     budget: parseFloat(formData.budget),
+                    disbursed: formData.disbursed ? parseFloat(formData.disbursed) : 0,
                     contractor: formData.contractor,
+                    officer: formData.officer || null,
                     description: formData.description,
                     progress: formData.progress,
                     planned_progress: formData.plannedProgress,
@@ -132,10 +145,14 @@ const AdminPage = () => {
                     name: '',
                     description: '',
                     stateId: '',
+                    location: '',
+                    branch: '',
                     type: 'construction',
                     status: 'planning',
                     budget: '',
+                    disbursed: '',
                     contractor: '',
+                    officer: '',
                     startDate: '',
                     endDate: '',
                     progress: 0,
@@ -185,6 +202,127 @@ const AdminPage = () => {
             toast.error('An error occurred while deleting the project');
         } finally {
             setDeletingProjectId(null);
+        }
+    };
+
+    const handleExportExcel = async () => {
+        setIsExporting(true);
+        try {
+            const response = await fetch('/api/projects/export-excel');
+
+            if (!response.ok) {
+                throw new Error('Export failed');
+            }
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `projects_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            toast.success('Projects exported successfully!');
+        } catch (error) {
+            console.error('Error exporting:', error);
+            toast.error('Failed to export projects');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+            toast.error('Please upload an Excel file (.xlsx or .xls)');
+            return;
+        }
+
+        setIsUploading(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/projects/upload-excel', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                toast.success(
+                    `Upload complete! Created: ${result.results.created}, Updated: ${result.results.updated}${
+                        result.results.errors.length > 0 ? `, Errors: ${result.results.errors.length}` : ''
+                    }`
+                );
+
+                if (result.results.errors.length > 0) {
+                    console.error('Upload errors:', result.results.errors);
+                }
+
+                fetchProjects();
+            } else {
+                toast.error(result.error || 'Upload failed');
+            }
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            toast.error('An error occurred during upload');
+        } finally {
+            setIsUploading(false);
+            event.target.value = '';
+        }
+    };
+
+    const handleGoogleSheetsSync = async () => {
+        if (!spreadsheetId.trim()) {
+            toast.error('Please enter a Spreadsheet ID');
+            return;
+        }
+
+        setIsSyncing(true);
+
+        try {
+            const response = await fetch('/api/projects/sync-google-sheets', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    spreadsheetId: spreadsheetId.trim(),
+                    sheetName: sheetName.trim() || 'Sheet1',
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                toast.success(
+                    `Sync complete! Created: ${result.results.created}, Updated: ${result.results.updated}${
+                        result.results.errors.length > 0 ? `, Errors: ${result.results.errors.length}` : ''
+                    }`
+                );
+
+                if (result.results.errors.length > 0) {
+                    console.error('Sync errors:', result.results.errors);
+                    toast.warning(`${result.results.errors.length} rows had errors. Check console for details.`);
+                }
+
+                // Refresh projects list immediately
+                await fetchProjects();
+            } else {
+                toast.error(result.error || 'Sync failed');
+            }
+        } catch (error) {
+            console.error('Error syncing Google Sheets:', error);
+            toast.error('An error occurred during sync');
+        } finally {
+            setIsSyncing(false);
         }
     };
 
@@ -242,7 +380,7 @@ const AdminPage = () => {
             </Head>
 
             <SidebarProvider>
-                <DashboardSidebar filters={filters} onFilterChange={setFilters} />
+                <DashboardSidebar filters={filters} onFilterChange={setFilters} projects={projects} />
 
                 <SidebarInset>
                     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-20 md:pb-12">
@@ -283,6 +421,177 @@ const AdminPage = () => {
                                             Logged in as {user?.primaryEmailAddress?.emailAddress || 'Admin'}
                                         </p>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Excel Import/Export */}
+                            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 mb-8">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center">
+                                        <FileSpreadsheet className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">Excel Management</h2>
+                                        <p className="text-sm text-zinc-500">Bulk import or export projects</p>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Upload Excel */}
+                                    <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4 hover:border-emerald-400 dark:hover:border-emerald-600 transition-colors">
+                                        <label className="cursor-pointer block">
+                                            <input
+                                                type="file"
+                                                accept=".xlsx,.xls"
+                                                onChange={handleFileUpload}
+                                                disabled={isUploading}
+                                                className="hidden"
+                                            />
+                                            <div className="flex flex-col items-center text-center">
+                                                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${
+                                                    isUploading
+                                                        ? 'bg-emerald-100 dark:bg-emerald-900/30'
+                                                        : 'bg-emerald-50 dark:bg-emerald-900/20'
+                                                }`}>
+                                                    {isUploading ? (
+                                                        <Loader2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 animate-spin" />
+                                                    ) : (
+                                                        <Upload className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                                                    )}
+                                                </div>
+                                                <h3 className="font-semibold text-zinc-900 dark:text-white mb-1">
+                                                    {isUploading ? 'Uploading...' : 'Import Excel'}
+                                                </h3>
+                                                <p className="text-sm text-zinc-500 mb-2">
+                                                    Upload .xlsx file to bulk create/update projects
+                                                </p>
+                                                <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                                    Click to browse
+                                                </span>
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    {/* Export Excel */}
+                                    <div className="border border-zinc-200 dark:border-zinc-700 rounded-xl p-4">
+                                        <button
+                                            onClick={handleExportExcel}
+                                            disabled={isExporting || projects.length === 0}
+                                            className="w-full h-full flex flex-col items-center text-center hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${
+                                                isExporting
+                                                    ? 'bg-blue-100 dark:bg-blue-900/30'
+                                                    : 'bg-blue-50 dark:bg-blue-900/20'
+                                            }`}>
+                                                {isExporting ? (
+                                                    <Loader2 className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" />
+                                                ) : (
+                                                    <Download className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                                                )}
+                                            </div>
+                                            <h3 className="font-semibold text-zinc-900 dark:text-white mb-1">
+                                                {isExporting ? 'Exporting...' : 'Export Excel'}
+                                            </h3>
+                                            <p className="text-sm text-zinc-500 mb-2">
+                                                Download all projects as Excel file
+                                            </p>
+                                            <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                                {projects.length} projects available
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <p className="text-xs text-amber-800 dark:text-amber-200">
+                                        <strong>Note:</strong> Upload will create new projects or update existing ones (matched by project name). Export includes all current data.
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Google Sheets Sync */}
+                            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 mb-8">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                                        <RefreshCw className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">Google Sheets Sync</h2>
+                                        <p className="text-sm text-zinc-500">Automatically sync projects from Google Sheets</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {/* Spreadsheet ID Input */}
+                                    <div>
+                                        <label htmlFor="spreadsheetId" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                            Spreadsheet ID *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="spreadsheetId"
+                                            value={spreadsheetId}
+                                            onChange={(e) => setSpreadsheetId(e.target.value)}
+                                            placeholder="Enter your Google Sheets Spreadsheet ID"
+                                            className="w-full px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        />
+                                        <p className="mt-1 text-xs text-zinc-500">
+                                            Find this in your Google Sheets URL: docs.google.com/spreadsheets/d/<span className="font-mono text-green-600 dark:text-green-400">SPREADSHEET_ID</span>/edit
+                                        </p>
+                                    </div>
+
+                                    {/* Sheet Name Input */}
+                                    <div>
+                                        <label htmlFor="sheetName" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                            Sheet Name (Optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="sheetName"
+                                            value={sheetName}
+                                            onChange={(e) => setSheetName(e.target.value)}
+                                            placeholder="Sheet1"
+                                            className="w-full px-4 py-2.5 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        />
+                                        <p className="mt-1 text-xs text-zinc-500">
+                                            Defaults to "Sheet1" if not specified
+                                        </p>
+                                    </div>
+
+                                    {/* Sync Button */}
+                                    <button
+                                        onClick={handleGoogleSheetsSync}
+                                        disabled={isSyncing || !spreadsheetId.trim()}
+                                        className="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isSyncing ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Syncing from Google Sheets...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <RefreshCw className="w-5 h-5" />
+                                                Sync Now
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg">
+                                    <p className="text-xs text-blue-800 dark:text-blue-200 mb-2">
+                                        <strong>Setup Required:</strong> Before syncing, you need to:
+                                    </p>
+                                    <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1 ml-4 list-disc">
+                                        <li>Create a Google Cloud service account</li>
+                                        <li>Enable Google Sheets API</li>
+                                        <li>Share your spreadsheet with the service account</li>
+                                        <li>Add credentials to environment variables</li>
+                                    </ul>
+                                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                                        📖 See <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded font-mono">GOOGLE_SHEETS_SETUP.md</code> for detailed instructions
+                                    </p>
                                 </div>
                             </div>
 
@@ -330,6 +639,38 @@ const AdminPage = () => {
                                                     </option>
                                                 ))}
                                             </select>
+                                        </div>
+
+                                        {/* Location */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                                Location
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="location"
+                                                value={formData.location}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., Cheras, Kuala Lumpur"
+                                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Branch */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                                Branch
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="branch"
+                                                value={formData.branch}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., JBEC, BPEC, CF"
+                                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
                                         </div>
 
                                         {/* Type */}
@@ -383,6 +724,23 @@ const AdminPage = () => {
                                             />
                                         </div>
 
+                                        {/* Disbursed */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                                Disbursed (RM)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                name="disbursed"
+                                                value={formData.disbursed}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., 10000000"
+                                                min="0"
+                                                step="0.01"
+                                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+
                                         {/* Contractor */}
                                         <div>
                                             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
@@ -394,6 +752,21 @@ const AdminPage = () => {
                                                 value={formData.contractor}
                                                 onChange={handleInputChange}
                                                 placeholder="e.g., Gamuda Berhad"
+                                                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                        </div>
+
+                                        {/* Officer */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">
+                                                Officer
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="officer"
+                                                value={formData.officer}
+                                                onChange={handleInputChange}
+                                                placeholder="e.g., NNS"
                                                 className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                         </div>

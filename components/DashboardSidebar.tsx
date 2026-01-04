@@ -24,7 +24,7 @@ import {
   Filter
 } from 'lucide-react';
 import { states } from '@/data/states';
-import { projects } from '@/data/projects';
+import { ProjectRow } from '@/lib/supabase';
 
 export interface DashboardFilters {
   state: string;
@@ -35,12 +35,13 @@ export interface DashboardFilters {
 interface DashboardSidebarProps {
   filters: DashboardFilters;
   onFilterChange: (filters: DashboardFilters) => void;
+  projects?: ProjectRow[];
 }
 
-const DashboardSidebar = ({ filters, onFilterChange }: DashboardSidebarProps) => {
+const DashboardSidebar = ({ filters, onFilterChange, projects = [] }: DashboardSidebarProps) => {
   const router = useRouter();
-  
-  // Calculate stats
+
+  // Calculate stats from live data
   const stats = {
     total: projects.length,
     inProgress: projects.filter(p => p.status === 'in-progress').length,

@@ -1,5 +1,6 @@
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
+import Head from "next/head";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DataProvider } from "@/contexts/DataContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -9,7 +10,11 @@ import { Toaster } from "@/components/ui/sonner";
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <ClerkProvider
+    <>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </Head>
+      <ClerkProvider
       appearance={{
         elements: {
           socialButtonsBlockButton: "h-12 !w-full",
@@ -35,5 +40,6 @@ export default function App({ Component, pageProps }: AppProps) {
         </LanguageProvider>
       </ThemeProvider>
     </ClerkProvider>
+    </>
   );
 }

@@ -1,0 +1,6 @@
+name,state_id,location,branch,type,status,start_date,end_date,budget,disbursed,contractor,officer,description,progress,planned_progress
+Dekad Jitu Sdn Bhd,kuala-lumpur,KL,JBEC,construction,on-hold,2023-01-15,2025-12-31,58795550,1802281.78,Dekad Jitu Sdn Bhd,NNS,Construction project in Southern region,41.61,74.78
+Ifimajaya Sdn Bhd,selangor,Shah Alam,BPEC,construction,completed,2022-06-01,2024-11-30,42751594.40,6094282.13,Ifimajaya Sdn Bhd,NNS,Completed construction project in Selangor,100,100
+MCS Management Sdn Bhd,kuala-lumpur,KL,CF,construction,in-progress,2023-03-01,2025-06-30,165000000,42181099.33,MCS Management Sdn Bhd,NNS,Large-scale construction project in KL,93.46,93.67
+MK Services Sdn Bhd,sarawak,Kuching,KL2EC,construction,completed,2022-08-01,2024-12-31,47050000,9517088.32,MK Services Sdn Bhd,NNS,Completed construction project in Kuching Sarawak,100,100
+Smart Reliance Sdn Bhd,sabah,Kota Kinabalu,CF,construction,in-progress,2023-05-01,2025-03-31,74878221.20,5771846.01,Smart Reliance Sdn Bhd,NNS,Construction project in Kota Kinabalu Sabah,98.35,100

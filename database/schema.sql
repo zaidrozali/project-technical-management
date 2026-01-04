@@ -12,15 +12,19 @@ CREATE TABLE IF NOT EXISTS public.projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     state_id TEXT NOT NULL,
+    location TEXT,
+    branch TEXT,
     type TEXT NOT NULL CHECK (type IN ('construction', 'machinery')),
     status TEXT NOT NULL CHECK (status IN ('planning', 'in-progress', 'completed', 'on-hold')),
     start_date DATE NOT NULL,
     end_date DATE,
     budget BIGINT NOT NULL CHECK (budget >= 0),
+    disbursed NUMERIC(15, 2) DEFAULT 0 CHECK (disbursed >= 0),
     contractor TEXT NOT NULL,
+    officer TEXT,
     description TEXT NOT NULL,
-    progress INTEGER NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
-    planned_progress INTEGER NOT NULL DEFAULT 0 CHECK (planned_progress >= 0 AND planned_progress <= 100),
+    progress NUMERIC(5, 2) NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+    planned_progress NUMERIC(5, 2) NOT NULL DEFAULT 0 CHECK (planned_progress >= 0 AND planned_progress <= 100),
     created_by TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -47,6 +51,12 @@ CREATE INDEX IF NOT EXISTS idx_projects_created_by ON public.projects(created_by
 
 -- Index on created_at for sorting
 CREATE INDEX IF NOT EXISTS idx_projects_created_at ON public.projects(created_at DESC);
+
+-- Index on branch for filtering by branch
+CREATE INDEX IF NOT EXISTS idx_projects_branch ON public.projects(branch);
+
+-- Index on officer for filtering by officer
+CREATE INDEX IF NOT EXISTS idx_projects_officer ON public.projects(officer);
 
 -- ============================================
 -- 3. ENABLE ROW LEVEL SECURITY (RLS)

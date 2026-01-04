@@ -1,6 +1,6 @@
 import Head from 'next/head';
 import { useState, useMemo } from 'react';
-import { projects, Project, ProjectStatus, ProjectType, getStatusColor, getTypeColor, formatBudget } from '@/data/projects';
+import { getStatusColor, getTypeColor, formatBudget } from '@/data/projects';
 import { states } from '@/data/states';
 import PageHeader from '@/components/PageHeader';
 import Footer from '@/components/Footer';
@@ -8,8 +8,12 @@ import MobileBottomNav from '@/components/MobileBottomNav';
 import DashboardSidebar, { DashboardFilters } from '@/components/DashboardSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import Link from 'next/link';
+import { useProjects } from '@/hooks/useProjects';
+import { ProjectRow, ProjectStatus, ProjectType } from '@/lib/supabase';
 
 const ProjectsPage = () => {
+    // Fetch projects from API
+    const { projects, isLoading } = useProjects();
     // Filter states
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedState, setSelectedState] = useState<string>('all');
@@ -43,7 +47,7 @@ const ProjectsPage = () => {
 
         // State filter
         if (selectedState !== 'all') {
-            result = result.filter(p => p.stateId === selectedState);
+            result = result.filter(p => p.state_id === selectedState);
         }
 
         // Type filter
@@ -79,14 +83,14 @@ const ProjectsPage = () => {
                     comparison = a.progress - b.progress;
                     break;
                 case 'date':
-                    comparison = new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+                    comparison = new Date(a.start_date).getTime() - new Date(b.start_date).getTime();
                     break;
             }
             return sortOrder === 'asc' ? comparison : -comparison;
         });
 
         return result;
-    }, [searchQuery, selectedState, selectedType, selectedStatus, showDelayedOnly, sortBy, sortOrder]);
+    }, [projects, searchQuery, selectedState, selectedType, selectedStatus, showDelayedOnly, sortBy, sortOrder]);
 
     const getStatusLabel = (status: ProjectStatus) => {
         switch (status) {
@@ -121,7 +125,7 @@ const ProjectsPage = () => {
             </Head>
 
             <SidebarProvider>
-                <DashboardSidebar filters={sidebarFilters} onFilterChange={setSidebarFilters} />
+                <DashboardSidebar filters={sidebarFilters} onFilterChange={setSidebarFilters} projects={projects} />
 
                 <SidebarInset>
                     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-20 md:pb-12">
@@ -340,12 +344,12 @@ const ProjectsPage = () => {
                                                                             })()}
                                                                         </div>
                                                                         <p className="text-xs text-zinc-500 font-mono">{project.id}</p>
-                                                                        <p className="text-xs text-zinc-500 md:hidden mt-1">{getStateName(project.stateId)}</p>
+                                                                        <p className="text-xs text-zinc-500 md:hidden mt-1">{getStateName(project.state_id)}</p>
                                                                     </div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-4 py-4 hidden md:table-cell">
-                                                                <span className="text-sm text-zinc-700 dark:text-zinc-300">{getStateName(project.stateId)}</span>
+                                                                <span className="text-sm text-zinc-700 dark:text-zinc-300">{getStateName(project.state_id)}</span>
                                                             </td>
                                                             <td className="px-4 py-4 hidden lg:table-cell">
                                                                 <span className="text-sm text-zinc-600 dark:text-zinc-400">{project.contractor}</span>

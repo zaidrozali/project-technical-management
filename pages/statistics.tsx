@@ -17,7 +17,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
-import { projects, ProjectStatus, formatBudget } from '@/data/projects';
+import { formatBudget } from '@/data/projects';
 import { states } from '@/data/states';
 import PageHeader from '@/components/PageHeader';
 import Footer from '@/components/Footer';
@@ -26,8 +26,12 @@ import StatisticsFilters, { StatisticsFiltersState } from '@/components/Statisti
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import DashboardSidebar, { DashboardFilters } from '@/components/DashboardSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { useProjects } from '@/hooks/useProjects';
+import { ProjectStatus } from '@/lib/supabase';
 
 const Statistics = () => {
+  // Fetch projects from API
+  const { projects } = useProjects();
   // Statistics filter state
   const [filters, setFilters] = useState<StatisticsFiltersState>({
     states: [],
@@ -51,7 +55,7 @@ const Statistics = () => {
 
     // Filter by states
     if (filters.states.length > 0) {
-      result = result.filter(p => filters.states.includes(p.stateId));
+      result = result.filter(p => filters.states.includes(p.state_id));
     }
 
     // Filter by types
@@ -66,10 +70,10 @@ const Statistics = () => {
 
     // Filter by date range
     if (filters.dateRange.start) {
-      result = result.filter(p => new Date(p.startDate) >= new Date(filters.dateRange.start!));
+      result = result.filter(p => new Date(p.start_date) >= new Date(filters.dateRange.start!));
     }
     if (filters.dateRange.end) {
-      result = result.filter(p => new Date(p.startDate) <= new Date(filters.dateRange.end!));
+      result = result.filter(p => new Date(p.start_date) <= new Date(filters.dateRange.end!));
     }
 
     // Filter by budget range
@@ -115,8 +119,8 @@ const Statistics = () => {
     const stateMap = new Map<string, number>();
 
     filteredProjects.forEach(p => {
-      const current = stateMap.get(p.stateId) || 0;
-      stateMap.set(p.stateId, current + p.budget);
+      const current = stateMap.get(p.state_id) || 0;
+      stateMap.set(p.state_id, current + p.budget);
     });
 
     return Array.from(stateMap.entries())
@@ -137,7 +141,7 @@ const Statistics = () => {
     const timelineMap = new Map<string, { started: number; completed: number }>();
 
     filteredProjects.forEach(p => {
-      const startDate = new Date(p.startDate);
+      const startDate = new Date(p.start_date);
       const monthKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
 
       if (!timelineMap.has(monthKey)) {
@@ -147,8 +151,8 @@ const Statistics = () => {
       const entry = timelineMap.get(monthKey)!;
       entry.started++;
 
-      if (p.status === 'completed' && p.endDate) {
-        const endDate = new Date(p.endDate);
+      if (p.status === 'completed' && p.end_date) {
+        const endDate = new Date(p.end_date);
         const endMonthKey = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}`;
 
         if (!timelineMap.has(endMonthKey)) {
@@ -177,7 +181,7 @@ const Statistics = () => {
     const machineryByState = new Map<string, number>();
 
     filteredProjects.forEach(p => {
-      const stateName = states.find(s => s.id === p.stateId)?.name || p.stateId;
+      const stateName = states.find(s => s.id === p.state_id)?.name || p.state_id;
       if (p.type === 'construction') {
         constructionByState.set(stateName, (constructionByState.get(stateName) || 0) + 1);
       } else {
@@ -205,7 +209,7 @@ const Statistics = () => {
     const quarterMap = new Map<string, { allocated: number; utilized: number }>();
 
     filteredProjects.forEach(p => {
-      const startDate = new Date(p.startDate);
+      const startDate = new Date(p.start_date);
       const quarter = Math.ceil((startDate.getMonth() + 1) / 3);
       const quarterKey = `Q${quarter} ${startDate.getFullYear()}`;
 
@@ -315,7 +319,7 @@ const Statistics = () => {
       </Head>
 
       <SidebarProvider>
-        <DashboardSidebar filters={sidebarFilters} onFilterChange={setSidebarFilters} />
+        <DashboardSidebar filters={sidebarFilters} onFilterChange={setSidebarFilters} projects={projects} />
 
         <SidebarInset>
           <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-20 md:pb-12 bg-[url('/grid.svg')] bg-fixed bg-center">

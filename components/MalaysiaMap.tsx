@@ -1,14 +1,20 @@
 import { states } from '@/data/states';
-import { getProjectCountByState } from '@/data/projects';
+import { ProjectRow } from '@/lib/supabase';
 
 interface MalaysiaMapProps {
   activeState: string | null;
   onStateClick: (stateId: string) => void;
   onStateHover: (stateId: string | null) => void;
+  projects?: ProjectRow[];
 }
 
-const MalaysiaMap = ({ activeState, onStateClick, onStateHover }: MalaysiaMapProps) => {
+const MalaysiaMap = ({ activeState, onStateClick, onStateHover, projects = [] }: MalaysiaMapProps) => {
   const activeColor = '#3b82f6'; // Blue as primary color
+
+  // Calculate project count for a given state
+  const getProjectCount = (stateId: string) => {
+    return projects.filter(p => p.state_id === stateId).length;
+  };
 
   return (
     <div className="relative rounded-xl px-0 p-8 pt-36 lg:pt-8 flex flex-col justify-center items-center">
@@ -43,7 +49,7 @@ const MalaysiaMap = ({ activeState, onStateClick, onStateHover }: MalaysiaMapPro
                 className="font-bold"
                 style={{ color: activeColor }}
               >
-                {getProjectCountByState(activeState)} project{getProjectCountByState(activeState) !== 1 ? 's' : ''}
+                {getProjectCount(activeState)} project{getProjectCount(activeState) !== 1 ? 's' : ''}
               </div>
             </div>
             <p className="text-xs text-zinc-400 mt-2">Click to view details</p>
@@ -72,7 +78,6 @@ const MalaysiaMap = ({ activeState, onStateClick, onStateHover }: MalaysiaMapPro
 
           {states.map((state) => {
             const isActive = activeState === state.id;
-            const projectCount = getProjectCountByState(state.id);
 
             return (
               <g key={state.id}>

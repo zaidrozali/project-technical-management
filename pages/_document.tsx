@@ -31,11 +31,10 @@ export default function Document() {
         {/* Favicon */}
         <link rel="icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" href="/favicon.ico" />
-        
+
         {/* Mobile Optimized */}
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="theme-color" content="#18181b" />
-        
+
         {/* Geo Tags */}
         <meta name="geo.region" content="MY" />
         <meta name="geo.placename" content="Malaysia" />

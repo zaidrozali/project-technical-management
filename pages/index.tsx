@@ -9,13 +9,16 @@ import ProjectStatsCharts from '@/components/ProjectStatsCharts';
 import DashboardSidebar, { DashboardFilters } from '@/components/DashboardSidebar';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { useState, useMemo } from 'react';
-import { getProjectsByState, projects } from '@/data/projects';
 import { states } from '@/data/states';
+import { useProjects } from '@/hooks/useProjects';
 
 const Home = () => {
   const [activeState, setActiveState] = useState<string | null>(null);
   const [showProjectList, setShowProjectList] = useState(false);
   const [selectedState, setSelectedState] = useState<string | null>(null);
+
+  // Fetch projects from API
+  const { projects, isLoading: isLoadingProjects } = useProjects();
 
   // Sidebar filters
   const [filters, setFilters] = useState<DashboardFilters>({
@@ -37,14 +40,17 @@ const Home = () => {
     setShowProjectList(false);
   };
 
-  const projectsForState = selectedState ? getProjectsByState(selectedState) : [];
+  // Filter projects by selected state
+  const projectsForState = selectedState
+    ? projects.filter(p => p.state_id === selectedState)
+    : [];
 
   // Calculate dynamic stats based on filters
   const stats = useMemo(() => {
     let filteredProjects = [...projects];
 
     if (filters.state !== 'all') {
-      filteredProjects = filteredProjects.filter(p => p.stateId === filters.state);
+      filteredProjects = filteredProjects.filter(p => p.state_id === filters.state);
     }
     if (filters.type !== 'all') {
       filteredProjects = filteredProjects.filter(p => p.type === filters.type);
@@ -59,7 +65,7 @@ const Home = () => {
       completed: filteredProjects.filter(p => p.status === 'completed').length,
       onHold: filteredProjects.filter(p => p.status === 'on-hold').length,
     };
-  }, [filters]);
+  }, [filters, projects]);
 
   return (
     <>
@@ -70,7 +76,7 @@ const Home = () => {
       </Head>
 
       <SidebarProvider>
-        <DashboardSidebar filters={filters} onFilterChange={setFilters} />
+        <DashboardSidebar filters={filters} onFilterChange={setFilters} projects={projects} />
 
         <SidebarInset>
           <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 pb-20 md:pb-12 bg-[url('/grid.svg')] bg-fixed bg-center">
@@ -121,6 +127,7 @@ const Home = () => {
                   activeState={activeState}
                   onStateClick={handleStateClick}
                   onStateHover={handleStateHover}
+                  projects={projects}
                 />
               </div>
 
@@ -146,7 +153,7 @@ const Home = () => {
 
               {/* Charts Section */}
               <div className="mb-10">
-                <ProjectStatsCharts filters={filters} />
+                <ProjectStatsCharts filters={filters} projects={projects} />
               </div>
 
               {/* View All Projects Button */}

@@ -1,9 +1,10 @@
-import { Project, getStatusColor, getTypeColor, formatBudget } from '@/data/projects';
+import { getStatusColor, getTypeColor, formatBudget } from '@/data/projects';
 import { states } from '@/data/states';
+import { ProjectRow } from '@/lib/supabase';
 
 interface ProjectListProps {
     stateId: string | null;
-    projects: Project[];
+    projects: ProjectRow[];
     onClose: () => void;
 }
 
@@ -144,12 +145,12 @@ const ProjectList = ({ stateId, projects, onClose }: ProjectListProps) => {
                                         </div>
                                         <div>
                                             <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider mb-0.5">Start Date</p>
-                                            <p className="text-zinc-700 dark:text-zinc-300">{project.startDate}</p>
+                                            <p className="text-zinc-700 dark:text-zinc-300">{project.start_date}</p>
                                         </div>
-                                        {project.endDate && (
+                                        {project.end_date && (
                                             <div>
                                                 <p className="text-zinc-500 dark:text-zinc-400 text-xs uppercase tracking-wider mb-0.5">End Date</p>
-                                                <p className="text-zinc-700 dark:text-zinc-300">{project.endDate}</p>
+                                                <p className="text-zinc-700 dark:text-zinc-300">{project.end_date}</p>
                                             </div>
                                         )}
                                     </div>

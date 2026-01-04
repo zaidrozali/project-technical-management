@@ -12,21 +12,23 @@ import {
     Cell,
     Legend,
 } from 'recharts';
-import { projects, Project, formatBudget, getStatusColor, getTypeColor } from '@/data/projects';
+import { formatBudget, getStatusColor, getTypeColor } from '@/data/projects';
 import { states } from '@/data/states';
 import { DashboardFilters } from './DashboardSidebar';
+import { ProjectRow } from '@/lib/supabase';
 
 interface ProjectStatsChartsProps {
     filters: DashboardFilters;
+    projects?: ProjectRow[];
 }
 
-const ProjectStatsCharts = ({ filters }: ProjectStatsChartsProps) => {
+const ProjectStatsCharts = ({ filters, projects = [] }: ProjectStatsChartsProps) => {
     // Filter projects based on sidebar filters
     const filteredProjects = useMemo(() => {
         let result = [...projects];
 
         if (filters.state !== 'all') {
-            result = result.filter(p => p.stateId === filters.state);
+            result = result.filter(p => p.state_id === filters.state);
         }
         if (filters.type !== 'all') {
             result = result.filter(p => p.type === filters.type);
@@ -36,7 +38,7 @@ const ProjectStatsCharts = ({ filters }: ProjectStatsChartsProps) => {
         }
 
         return result;
-    }, [filters]);
+    }, [filters, projects]);
 
     // Status distribution data
     const statusData = useMemo(() => {
@@ -73,8 +75,8 @@ const ProjectStatsCharts = ({ filters }: ProjectStatsChartsProps) => {
         const stateMap = new Map<string, number>();
 
         filteredProjects.forEach(p => {
-            const current = stateMap.get(p.stateId) || 0;
-            stateMap.set(p.stateId, current + p.budget);
+            const current = stateMap.get(p.state_id) || 0;
+            stateMap.set(p.state_id, current + p.budget);
         });
 
         return Array.from(stateMap.entries())

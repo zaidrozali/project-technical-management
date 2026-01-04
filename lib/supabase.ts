@@ -2,16 +2,29 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
 }
 
+// Regular client for public/authenticated operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: false, // We're using Clerk for auth
   },
 });
+
+// Service role client for admin operations (bypasses RLS)
+// Use this ONLY in server-side API routes for admin operations like syncing
+export const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  : null;
 
 // Type definitions for database
 export interface Database {
@@ -81,12 +94,16 @@ export interface Database {
           id: string;
           name: string;
           state_id: string;
+          location: string | null;
+          branch: string | null;
           type: 'construction' | 'machinery';
           status: 'planning' | 'in-progress' | 'completed' | 'on-hold';
           start_date: string;
           end_date: string | null;
           budget: number;
+          disbursed: number;
           contractor: string;
+          officer: string | null;
           description: string;
           progress: number;
           planned_progress: number;
@@ -97,12 +114,16 @@ export interface Database {
         Insert: {
           name: string;
           state_id: string;
+          location?: string | null;
+          branch?: string | null;
           type: 'construction' | 'machinery';
           status: 'planning' | 'in-progress' | 'completed' | 'on-hold';
           start_date: string;
           end_date?: string | null;
           budget: number;
+          disbursed?: number;
           contractor: string;
+          officer?: string | null;
           description: string;
           progress: number;
           planned_progress: number;
@@ -111,12 +132,16 @@ export interface Database {
         Update: {
           name?: string;
           state_id?: string;
+          location?: string | null;
+          branch?: string | null;
           type?: 'construction' | 'machinery';
           status?: 'planning' | 'in-progress' | 'completed' | 'on-hold';
           start_date?: string;
           end_date?: string | null;
           budget?: number;
+          disbursed?: number;
           contractor?: string;
+          officer?: string | null;
           description?: string;
           progress?: number;
           planned_progress?: number;

@@ -20,12 +20,16 @@ import { clerkClient } from '@clerk/nextjs/server';
 export interface CreateProjectData {
   name: string;
   state_id: string;
+  location?: string | null;
+  branch?: string | null;
   type: ProjectType;
   status: ProjectStatus;
   start_date: string;
   end_date?: string | null;
   budget: number;
+  disbursed?: number;
   contractor: string;
+  officer?: string | null;
   description: string;
   progress: number;
   planned_progress: number;
@@ -38,12 +42,16 @@ export interface CreateProjectData {
 export interface UpdateProjectData {
   name?: string;
   state_id?: string;
+  location?: string | null;
+  branch?: string | null;
   type?: ProjectType;
   status?: ProjectStatus;
   start_date?: string;
   end_date?: string | null;
   budget?: number;
+  disbursed?: number;
   contractor?: string;
+  officer?: string | null;
   description?: string;
   progress?: number;
   planned_progress?: number;
